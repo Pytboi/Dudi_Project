@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core Brand Palette -->
+    <color name="bg_deep_dark">#101010</color>
+    <color name="bg_card">#1E1E1E</color>
+    
+    <color name="primary_neon_orange">#FF6D00</color>
+    <color name="primary_neon_glow">#4DFF6D00</color> <!-- 30% Opacity -->
+    <color name="primary_electric_red">#FF1744</color>
+    
+    <color name="secondary_steel">#455A64</color>
+    <color name="secondary_muted_blue">#37474F</color>
+    
+    <!-- Text and Surface -->
+    <color name="text_high_emphasis">#FFFFFF</color>
+    <color name="text_medium_emphasis">#B0BEC5</color>
+    <color name="text_disabled">#546E7A</color>
+    
+    <!-- Standard Material Colors -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+</resources>
