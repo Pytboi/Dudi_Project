@@ -13,7 +13,6 @@ import com.example.dudi_project.R;
 
 public class OnboardingFragment extends Fragment {
 
-    // הגדרת הממשק שה-MainActivity חייב לממש
     public interface OnboardingListener {
         void onOnboardingComplete();
     }
@@ -35,7 +34,6 @@ public class OnboardingFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_onboarding, container, false);
 
-        // כפתור זמני לסיום ההדרכה
         Button btnFinish = view.findViewById(R.id.btn_finish_onboarding);
         btnFinish.setOnClickListener(v -> listener.onOnboardingComplete());
 

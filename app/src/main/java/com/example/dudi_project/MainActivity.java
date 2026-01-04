@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-
 import com.example.dudi_project.fragments.*;
 
 public class MainActivity extends AppCompatActivity implements
@@ -18,7 +17,7 @@ public class MainActivity extends AppCompatActivity implements
 
     private BottomNavigationView bottomNav;
     private SharedPreferences prefs;
-    private int currentNavId = -1; // שמירת הטאב הנוכחי לצורך זיהוי כיוון הגלילה
+    private int currentNavId = -1;
 
     private static final String PREFS_NAME = "CoachPrefs";
     private static final String KEY_ONBOARDED = "isOnboarded";
@@ -35,7 +34,6 @@ public class MainActivity extends AppCompatActivity implements
             int id = item.getItemId();
             if (id == currentNavId) return true;
 
-            // קביעת כיוון האנימציה לפי מיקום הטאב
             boolean slideRight = getNavPosition(id) > getNavPosition(currentNavId);
             
             if (id == R.id.nav_dashboard) {
@@ -62,7 +60,6 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    // פונקציה לקביעת סדר הטאבים (0 עד 2)
     private int getNavPosition(int id) {
         if (id == R.id.nav_dashboard) return 0;
         if (id == R.id.nav_history) return 1;
@@ -73,18 +70,17 @@ public class MainActivity extends AppCompatActivity implements
     private void loadFragment(Fragment fragment, boolean slideRight) {
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         
-        // הגדרת האנימציות לפני ה-replace
         if (slideRight) {
             transaction.setCustomAnimations(
-                R.anim.slide_in_right,  // כניסה של החדש מימין
-                R.anim.slide_out_left,  // יציאה של הישן לשמאל
-                R.anim.slide_in_left,   // (עבור כפתור חזור)
-                R.anim.slide_out_right  // (עבור כפתור חזור)
+                R.anim.slide_in_right,
+                R.anim.slide_out_left,
+                R.anim.slide_in_left,
+                R.anim.slide_out_right
             );
         } else {
             transaction.setCustomAnimations(
-                R.anim.slide_in_left,   // כניסה משמאל
-                R.anim.slide_out_right,  // יציאה לימין
+                R.anim.slide_in_left,
+                R.anim.slide_out_right,
                 R.anim.slide_in_right,
                 R.anim.slide_out_left
             );
@@ -121,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onRunFinished() {
         currentNavId = R.id.nav_dashboard;
-        loadFragment(new DashboardFragment(), false); // גלילה חזרה שמאלה
+        loadFragment(new DashboardFragment(), false);
         bottomNav.setSelectedItemId(R.id.nav_dashboard);
     }
 

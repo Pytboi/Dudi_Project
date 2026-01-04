@@ -14,7 +14,7 @@ import com.example.dudi_project.R;
 public class LiveRunFragment extends Fragment {
 
     public interface LiveRunListener {
-        void onRunFinished(); // שים לב: ב-Main קראנו לזה onRunFinished
+        void onRunFinished();
     }
 
     private LiveRunListener listener;

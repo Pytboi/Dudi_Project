@@ -3,4 +3,6 @@
     <string name="dashboard_title">MISSION CONTROL</string>
     <string name="start_run">START SESSION</string>
     <string name="welcome_back">LACE UP.</string>
+    <string name="default_web_client_id"></string>
+
 </resources>
