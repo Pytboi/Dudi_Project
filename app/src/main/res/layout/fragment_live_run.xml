@@ -1,24 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="#121212">
+    android:background="@color/bg_deep_dark">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <!-- OpenStreetMap (OSM) MapView -->
+    <org.osmdroid.views.MapView
+        android:id="@+id/map_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Dark Overlay for the "Hardcore" look -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99101010" />
+
+    <!-- Stats Panel -->
+    <LinearLayout
+        android:id="@+id/ll_stats"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Live Run Session"
-        android:textColor="#FFFFFF"
-        android:textSize="24sp"
-        android:layout_marginBottom="20dp"/>
+        android:orientation="horizontal"
+        android:padding="24dp"
+        android:weightSum="3"
+        android:background="#AA101010"
+        app:layout_constraintTop_toTopOf="parent">
 
-    <Button
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TIME"
+                android:textColor="@color/text_medium_emphasis"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_run_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00:00"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DISTANCE"
+                android:textColor="@color/text_medium_emphasis"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_run_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0.00 km"
+                android:textColor="@color/primary_neon_orange"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PACE"
+                android:textColor="@color/text_medium_emphasis"
+                android:textSize="12sp" />
+            <TextView
+                android:id="@+id/tv_run_pace"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Stop Button -->
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_stop_run"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Stop Run"
-        android:backgroundTint="#FF5252" />
+        style="@style/Widget.App.Button.Pill"
+        android:layout_width="200dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="40dp"
+        android:text="FINISH RUN"
+        android:backgroundTint="@color/primary_electric_red"
+        android:textColor="@color/white"
+        app:elevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
-</LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
