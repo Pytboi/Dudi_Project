@@ -23,11 +23,14 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.example.dudi_project.R;
+import com.example.dudi_project.data.AppDatabase;
+import com.example.dudi_project.data.Run;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
 import com.google.android.material.button.MaterialButton;
 
 import org.osmdroid.config.Configuration;
@@ -37,9 +40,8 @@ import org.osmdroid.views.CustomZoomButtonsController;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Polyline;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 
 public class LiveRunFragment extends Fragment {
 
@@ -60,9 +62,10 @@ public class LiveRunFragment extends Fragment {
     private float totalDistance = 0f;
     private Location lastLocation;
     private Polyline runPath;
+    private StringBuilder speedHistory = new StringBuilder(); // שמירת היסטוריית מהירויות
     
-    private Handler timerHandler = new Handler(Looper.getMainLooper());
-    private Runnable timerRunnable = new Runnable() {
+    private final Handler timerHandler = new Handler(Looper.getMainLooper());
+    private final Runnable timerRunnable = new Runnable() {
         @Override
         public void run() {
             if (isRunning) {
@@ -70,7 +73,9 @@ public class LiveRunFragment extends Fragment {
                 int seconds = (int) (millis / 1000);
                 int minutes = seconds / 60;
                 seconds = seconds % 60;
-                tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+                if (tvTime != null) {
+                    tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+                }
                 timerHandler.postDelayed(this, 1000);
             }
         }
@@ -78,11 +83,10 @@ public class LiveRunFragment extends Fragment {
 
     private final ActivityResultLauncher<String[]> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
-                Boolean fineLocationGranted = result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false);
-                if (fineLocationGranted != null && fineLocationGranted) {
+                if (Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false))) {
                     startLocationUpdates();
                 } else {
-                    Toast.makeText(getContext(), "Location permission required for tracking", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "GPS permission is required", Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -92,16 +96,19 @@ public class LiveRunFragment extends Fragment {
         Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context));
         if (context instanceof LiveRunListener) {
             listener = (LiveRunListener) context;
-        } else {
-            throw new RuntimeException("Activity must implement LiveRunListener");
         }
     }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_live_run, container, false);
+        return inflater.inflate(R.layout.fragment_live_run, container, false);
+    }
 
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        
         map = view.findViewById(R.id.map_view);
         tvTime = view.findViewById(R.id.tv_run_time);
         tvDistance = view.findViewById(R.id.tv_run_distance);
@@ -111,12 +118,9 @@ public class LiveRunFragment extends Fragment {
         initMap();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
 
-        btnStop.setOnClickListener(v -> stopRun());
+        btnStop.setOnClickListener(v -> stopRunAndSave());
 
-        checkPermissions();
-        startRun();
-
-        return view;
+        checkPermissionsAndStart();
     }
 
     private void initMap() {
@@ -126,12 +130,12 @@ public class LiveRunFragment extends Fragment {
         map.getController().setZoom(18.0);
         
         runPath = new Polyline();
-        runPath.getOutlinePaint().setColor(Color.parseColor("#FF6D00")); // Neon Orange
+        runPath.getOutlinePaint().setColor(Color.parseColor("#FF6D00"));
         runPath.getOutlinePaint().setStrokeWidth(12f);
         map.getOverlays().add(runPath);
     }
 
-    private void checkPermissions() {
+    private void checkPermissionsAndStart() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -140,28 +144,61 @@ public class LiveRunFragment extends Fragment {
         } else {
             startLocationUpdates();
         }
+        startTimer();
     }
 
-    private void startRun() {
-        isRunning = true;
-        startTime = System.currentTimeMillis();
-        timerHandler.postDelayed(timerRunnable, 0);
+    private void startTimer() {
+        if (!isRunning) {
+            isRunning = true;
+            startTime = System.currentTimeMillis();
+            timerHandler.postDelayed(timerRunnable, 0);
+        }
     }
 
-    private void stopRun() {
+    private void stopRunAndSave() {
         isRunning = false;
         timerHandler.removeCallbacks(timerRunnable);
+        
         if (fusedLocationClient != null && locationCallback != null) {
             fusedLocationClient.removeLocationUpdates(locationCallback);
         }
-        listener.onRunFinished();
+
+        long durationMillis = System.currentTimeMillis() - startTime;
+        float distanceKm = totalDistance / 1000f;
+        float avgPace = 0;
+        if (distanceKm > 0) {
+            avgPace = (durationMillis / 1000f) / distanceKm;
+        }
+
+        StringBuilder routeSb = new StringBuilder();
+        for (GeoPoint p : runPath.getActualPoints()) {
+            routeSb.append(p.getLatitude()).append(",").append(p.getLongitude()).append(";");
+        }
+
+        final Run runToSave = new Run(
+                System.currentTimeMillis(),
+                totalDistance,
+                durationMillis,
+                avgPace,
+                routeSb.toString(),
+                speedHistory.toString()
+        );
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            AppDatabase.getInstance(requireContext()).runDao().insert(runToSave);
+            new Handler(Looper.getMainLooper()).post(() -> {
+                if (isAdded()) {
+                    Toast.makeText(getContext(), "Run Saved Successfully!", Toast.LENGTH_SHORT).show();
+                    listener.onRunFinished();
+                }
+            });
+        });
     }
 
     private void startLocationUpdates() {
-        LocationRequest locationRequest = LocationRequest.create()
-                .setInterval(3000)
-                .setFastestInterval(1500)
-                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
+                .setMinUpdateIntervalMillis(1500)
+                .build();
 
         locationCallback = new LocationCallback() {
             @Override
@@ -178,21 +215,26 @@ public class LiveRunFragment extends Fragment {
     }
 
     private void updateRunStats(Location location) {
+        if (!isRunning) return;
+
         GeoPoint newPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
         map.getController().animateTo(newPoint);
         runPath.addPoint(newPoint);
         map.invalidate();
 
+        // שמירת המהירות (במטרים לשנייה) לצורך הגרף
+        speedHistory.append(location.getSpeed()).append(",");
+
         if (lastLocation != null) {
-            float distanceStep = lastLocation.distanceTo(location); // במטרים
+            float distanceStep = lastLocation.distanceTo(location);
             totalDistance += distanceStep;
             
             float distanceKm = totalDistance / 1000f;
             tvDistance.setText(String.format(Locale.getDefault(), "%.2f km", distanceKm));
             
-            // חישוב קצב (Pace)
-            if (location.getSpeed() > 0.5) {
-                float paceSecondsPerKm = 1000f / location.getSpeed();
+            float speed = location.getSpeed();
+            if (speed > 0.5) {
+                float paceSecondsPerKm = 1000f / speed;
                 int paceMin = (int) (paceSecondsPerKm / 60);
                 int paceSec = (int) (paceSecondsPerKm % 60);
                 tvPace.setText(String.format(Locale.getDefault(), "%d:%02d", paceMin, paceSec));
