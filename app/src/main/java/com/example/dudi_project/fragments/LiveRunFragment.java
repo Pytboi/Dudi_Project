@@ -12,6 +12,7 @@ import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,6 +39,7 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.CustomZoomButtonsController;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 
 import java.util.Locale;
@@ -62,7 +64,8 @@ public class LiveRunFragment extends Fragment {
     private float totalDistance = 0f;
     private Location lastLocation;
     private Polyline runPath;
-    private StringBuilder speedHistory = new StringBuilder(); // שמירת היסטוריית מהירויות
+    private Marker userMarker;
+    private StringBuilder speedHistory = new StringBuilder(); 
     
     private final Handler timerHandler = new Handler(Looper.getMainLooper());
     private final Runnable timerRunnable = new Runnable() {
@@ -109,6 +112,9 @@ public class LiveRunFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         
+        // נעילת מסך דולק בזמן הריצה
+        requireActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         map = view.findViewById(R.id.map_view);
         tvTime = view.findViewById(R.id.tv_run_time);
         tvDistance = view.findViewById(R.id.tv_run_distance);
@@ -130,9 +136,14 @@ public class LiveRunFragment extends Fragment {
         map.getController().setZoom(18.0);
         
         runPath = new Polyline();
-        runPath.getOutlinePaint().setColor(Color.parseColor("#FF6D00"));
+        runPath.getOutlinePaint().setColor(Color.parseColor("#00B0FF")); // Light Blue
         runPath.getOutlinePaint().setStrokeWidth(12f);
         map.getOverlays().add(runPath);
+
+        userMarker = new Marker(map);
+        userMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        userMarker.setIcon(ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.person));
+        map.getOverlays().add(userMarker);
     }
 
     private void checkPermissionsAndStart() {
@@ -156,6 +167,9 @@ public class LiveRunFragment extends Fragment {
     }
 
     private void stopRunAndSave() {
+        // שחרור נעילת מסך בסיום הריצה
+        requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         isRunning = false;
         timerHandler.removeCallbacks(timerRunnable);
         
@@ -219,10 +233,15 @@ public class LiveRunFragment extends Fragment {
 
         GeoPoint newPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
         map.getController().animateTo(newPoint);
+        
         runPath.addPoint(newPoint);
+        
+        if (userMarker != null) {
+            userMarker.setPosition(newPoint);
+        }
+        
         map.invalidate();
 
-        // שמירת המהירות (במטרים לשנייה) לצורך הגרף
         speedHistory.append(location.getSpeed()).append(",");
 
         if (lastLocation != null) {
@@ -241,6 +260,13 @@ public class LiveRunFragment extends Fragment {
             }
         }
         lastLocation = location;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // שחרור נעילת מסך אם יוצאים מהפרגמנט באמצע
+        requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override

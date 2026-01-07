@@ -3,8 +3,10 @@ package com.example.dudi_project;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.example.dudi_project.fragments.*;
@@ -30,6 +32,27 @@ public class MainActivity extends AppCompatActivity implements
         bottomNav = findViewById(R.id.bottom_navigation);
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
+        // ניהול כפתור החזור
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+                
+                // אם אנחנו בניתוח ריצה, היסטוריה או טרנדים - חזור לדשבורד
+                if (currentFragment instanceof RunAnalysisFragment || 
+                    currentFragment instanceof RunHistoryFragment || 
+                    currentFragment instanceof PerformanceTrendsFragment) {
+                    navigateToDashboard();
+                } else if (currentFragment instanceof LiveRunFragment) {
+                    // בריצה חיה אולי עדיף לא לחזור בטעות כדי לא להרוס את האימון, או להציג דיאלוג אישור
+                    navigateToDashboard();
+                } else {
+                    // אם אנחנו כבר בדשבורד, סגור את האפליקציה
+                    finish();
+                }
+            }
+        });
+
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == currentNavId) return true;
@@ -54,10 +77,15 @@ public class MainActivity extends AppCompatActivity implements
             loadFragment(new OnboardingFragment(), true);
             bottomNav.setVisibility(View.GONE);
         } else {
-            currentNavId = R.id.nav_dashboard;
-            loadFragment(new DashboardFragment(), true);
-            bottomNav.setVisibility(View.VISIBLE);
+            navigateToDashboard();
         }
+    }
+
+    private void navigateToDashboard() {
+        currentNavId = R.id.nav_dashboard;
+        loadFragment(new DashboardFragment(), false);
+        bottomNav.setVisibility(View.VISIBLE);
+        bottomNav.setSelectedItemId(R.id.nav_dashboard);
     }
 
     private int getNavPosition(int id) {
@@ -103,10 +131,7 @@ public class MainActivity extends AppCompatActivity implements
     @Override
     public void onOnboardingComplete() {
         prefs.edit().putBoolean(KEY_ONBOARDED, true).apply();
-        currentNavId = R.id.nav_dashboard;
-        loadFragment(new DashboardFragment(), true);
-        bottomNav.setVisibility(View.VISIBLE);
-        bottomNav.setSelectedItemId(R.id.nav_dashboard);
+        navigateToDashboard();
     }
 
     @Override
@@ -116,9 +141,7 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onRunFinished() {
-        currentNavId = R.id.nav_dashboard;
-        loadFragment(new DashboardFragment(), false);
-        bottomNav.setSelectedItemId(R.id.nav_dashboard);
+        navigateToDashboard();
     }
 
     @Override
