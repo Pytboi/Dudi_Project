@@ -32,22 +32,19 @@ public class MainActivity extends AppCompatActivity implements
         bottomNav = findViewById(R.id.bottom_navigation);
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
-        // ניהול כפתור החזור
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
                 
-                // אם אנחנו בניתוח ריצה, היסטוריה או טרנדים - חזור לדשבורד
                 if (currentFragment instanceof RunAnalysisFragment || 
                     currentFragment instanceof RunHistoryFragment || 
-                    currentFragment instanceof PerformanceTrendsFragment) {
+                    currentFragment instanceof PerformanceTrendsFragment ||
+                    currentFragment instanceof ProfileFragment) {
                     navigateToDashboard();
                 } else if (currentFragment instanceof LiveRunFragment) {
-                    // בריצה חיה אולי עדיף לא לחזור בטעות כדי לא להרוס את האימון, או להציג דיאלוג אישור
                     navigateToDashboard();
                 } else {
-                    // אם אנחנו כבר בדשבורד, סגור את האפליקציה
                     finish();
                 }
             }
@@ -121,7 +118,7 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void updateNavigationVisibility(Fragment fragment) {
-        if (fragment instanceof OnboardingFragment || fragment instanceof LiveRunFragment) {
+        if (fragment instanceof OnboardingFragment || fragment instanceof LiveRunFragment || fragment instanceof ProfileFragment) {
             bottomNav.setVisibility(View.GONE);
         } else {
             bottomNav.setVisibility(View.VISIBLE);
@@ -151,5 +148,10 @@ public class MainActivity extends AppCompatActivity implements
         args.putInt("RUN_ID", runId);
         fragment.setArguments(args);
         loadFragment(fragment, true);
+    }
+
+    @Override
+    public void onOpenProfile() {
+        loadFragment(new ProfileFragment(), true);
     }
 }

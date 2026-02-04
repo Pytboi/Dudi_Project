@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -37,10 +38,8 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
 
-    // OpenStreetMap (OSM)
+    // OSM & Location
     implementation("org.osmdroid:osmdroid-android:6.1.18")
-    
-    // GPS Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
     // Room Database
@@ -48,8 +47,19 @@ dependencies {
     implementation("androidx.room:room-runtime:$room_version")
     annotationProcessor("androidx.room:room-compiler:$room_version")
 
-    // Graphs - MPAndroidChart
+    // Graphs
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage") // לאחסון תמונות
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+
+    // Image Loading - Glide
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
