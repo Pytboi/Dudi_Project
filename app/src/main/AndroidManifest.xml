@@ -32,6 +32,14 @@
             android:exported="false" />
 
         <activity
+            android:name=".EmailLoginActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".UserSetupActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="false" />
         

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_deep_dark"
+    android:padding="24dp">
+
+    <ProgressBar
+        android:id="@+id/setup_progress"
+        style="@android:style/Widget.Material.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:max="6"
+        android:progress="1"
+        android:progressTint="@color/primary_neon_orange"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <ViewFlipper
+        android:id="@+id/vf_setup"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
+        tools:displayedChild="2"
+        app:layout_constraintBottom_toTopOf="@id/btn_next"
+        app:layout_constraintTop_toBottomOf="@id/setup_progress">
+
+        <!-- Step 1: Nickname -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="איך לקרוא לך?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                app:boxStrokeColor="@color/primary_neon_orange"
+                app:hintTextColor="@color/primary_neon_orange">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_setup_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="הכנס שם"
+                    android:textColor="@color/white" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <!-- Step 2: Gender -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="מה המגדר שלך?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <RadioGroup
+                android:id="@+id/rg_gender"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp">
+                <RadioButton android:id="@+id/rb_male" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="זכר" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+                <RadioButton android:id="@+id/rb_female" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="נקבה" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+                <RadioButton android:id="@+id/rb_other" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="אחר" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+            </RadioGroup>
+        </LinearLayout>
+
+        <!-- Step 3: Birth Date -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="מה תאריך הלידה שלך?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <DatePicker
+                android:id="@+id/dp_birthdate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:theme="@style/Theme.App.Picker"
+                android:datePickerMode="spinner"
+                android:calendarViewShown="false" />
+        </LinearLayout>
+
+        <!-- Step 4: Height -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="מה הגובה שלך (סמ)?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <NumberPicker
+                android:id="@+id/np_height"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:theme="@style/Theme.App.Picker" />
+        </LinearLayout>
+
+        <!-- Step 5: Weight -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="מה המשקל שלך (קג)?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <NumberPicker
+                android:id="@+id/np_weight"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:theme="@style/Theme.App.Picker" />
+        </LinearLayout>
+
+        <!-- Step 6: Fitness Level -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="מה רמת הכושר שלך?"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+            <RadioGroup
+                android:id="@+id/rg_fitness"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp">
+                <RadioButton android:id="@+id/level_beginner" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="מתחיל" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+                <RadioButton android:id="@+id/level_intermediate" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="בינוני" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+                <RadioButton android:id="@+id/level_advanced" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="מתקדם" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+                <RadioButton android:id="@+id/level_pro" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="מקצוען" android:textColor="@color/white" android:buttonTint="@color/primary_neon_orange" />
+            </RadioGroup>
+        </LinearLayout>
+
+    </ViewFlipper>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_next"
+        style="@style/Widget.App.Button.Pill"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:text="הבא"
+        android:backgroundTint="@color/primary_neon_orange"
+        android:textColor="@color/black"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

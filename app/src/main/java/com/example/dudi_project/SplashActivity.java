@@ -7,6 +7,7 @@ import android.os.Looper;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class SplashActivity extends AppCompatActivity {
 
@@ -18,17 +19,24 @@ public class SplashActivity extends AppCompatActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
             
-            Intent intent;
             if (currentUser != null) {
-                // המשתמש מחובר, עוברים למסך הראשי
-                intent = new Intent(SplashActivity.this, MainActivity.class);
+                // בדיקה אם המשתמש כבר סיים את הגדרת הפרופיל שלו ב-Firestore
+                FirebaseFirestore.getInstance().collection("users").document(currentUser.getUid()).get()
+                        .addOnCompleteListener(task -> {
+                            Intent intent;
+                            if (task.isSuccessful() && task.getResult().exists()) {
+                                intent = new Intent(SplashActivity.this, MainActivity.class);
+                            } else {
+                                intent = new Intent(SplashActivity.this, UserSetupActivity.class);
+                            }
+                            startActivity(intent);
+                            finish();
+                        });
             } else {
-                // המשתמש לא מחובר, עוברים למסך ההתחברות
-                intent = new Intent(SplashActivity.this, LoginActivity.class);
+                Intent intent = new Intent(SplashActivity.this, LoginActivity.class);
+                startActivity(intent);
+                finish();
             }
-            
-            startActivity(intent);
-            finish();
         }, 2500);
     }
 }

@@ -14,15 +14,19 @@ public class Run {
     private long durationMillis;
     private float averagePace;
     private String routePoints;
-    private String speedPoints; // שדה חדש לשמירת המהירויות לאורך הריצה
+    private String speedPoints;
+    private int totalSteps;      // שדה חדש לצעדים
+    private String spmPoints;    // שדה חדש לגרף SPM
 
-    public Run(long timestamp, float distance, long durationMillis, float averagePace, String routePoints, String speedPoints) {
+    public Run(long timestamp, float distance, long durationMillis, float averagePace, String routePoints, String speedPoints, int totalSteps, String spmPoints) {
         this.timestamp = timestamp;
         this.distance = distance;
         this.durationMillis = durationMillis;
         this.averagePace = averagePace;
         this.routePoints = routePoints;
         this.speedPoints = speedPoints;
+        this.totalSteps = totalSteps;
+        this.spmPoints = spmPoints;
     }
 
     public int getId() { return id; }
@@ -33,4 +37,6 @@ public class Run {
     public float getAveragePace() { return averagePace; }
     public String getRoutePoints() { return routePoints; }
     public String getSpeedPoints() { return speedPoints; }
+    public int getTotalSteps() { return totalSteps; }
+    public String getSpmPoints() { return spmPoints; }
 }

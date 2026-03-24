@@ -1,18 +1,18 @@
 package com.example.dudi_project.fragments;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.location.Location;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
+import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,13 +26,7 @@ import androidx.fragment.app.Fragment;
 import com.example.dudi_project.R;
 import com.example.dudi_project.data.AppDatabase;
 import com.example.dudi_project.data.Run;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.material.button.MaterialButton;
+import com.example.dudi_project.services.RunTrackingService;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
@@ -42,6 +36,8 @@ import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 
@@ -53,41 +49,32 @@ public class LiveRunFragment extends Fragment {
 
     private LiveRunListener listener;
     private MapView map;
-    private FusedLocationProviderClient fusedLocationClient;
-    private LocationCallback locationCallback;
-    
     private TextView tvTime, tvDistance, tvPace;
-    private MaterialButton btnStop;
-
-    private boolean isRunning = false;
-    private long startTime = 0L;
-    private float totalDistance = 0f;
-    private Location lastLocation;
     private Polyline runPath;
     private Marker userMarker;
-    private StringBuilder speedHistory = new StringBuilder(); 
-    
-    private final Handler timerHandler = new Handler(Looper.getMainLooper());
-    private final Runnable timerRunnable = new Runnable() {
+
+    private RunTrackingService runService;
+    private boolean isBound = false;
+
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
-        public void run() {
-            if (isRunning) {
-                long millis = System.currentTimeMillis() - startTime;
-                int seconds = (int) (millis / 1000);
-                int minutes = seconds / 60;
-                seconds = seconds % 60;
-                if (tvTime != null) {
-                    tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
-                }
-                timerHandler.postDelayed(this, 1000);
-            }
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            RunTrackingService.LocalBinder binder = (RunTrackingService.LocalBinder) service;
+            runService = binder.getService();
+            isBound = true;
+            observeServiceData();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
         }
     };
 
     private final ActivityResultLauncher<String[]> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                 if (Boolean.TRUE.equals(result.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false))) {
-                    startLocationUpdates();
+                    startTrackingService();
                 } else {
                     Toast.makeText(getContext(), "GPS permission is required", Toast.LENGTH_LONG).show();
                 }
@@ -111,22 +98,17 @@ public class LiveRunFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
-        // נעילת מסך דולק בזמן הריצה
-        requireActivity().getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         map = view.findViewById(R.id.map_view);
         tvTime = view.findViewById(R.id.tv_run_time);
         tvDistance = view.findViewById(R.id.tv_run_distance);
         tvPace = view.findViewById(R.id.tv_run_pace);
-        btnStop = view.findViewById(R.id.btn_stop_run);
 
         initMap();
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity());
 
-        btnStop.setOnClickListener(v -> stopRunAndSave());
+        view.findViewById(R.id.btn_stop_run).setOnClickListener(v -> stopRunAndSave());
 
-        checkPermissionsAndStart();
+        checkPermissions();
     }
 
     private void initMap() {
@@ -134,9 +116,9 @@ public class LiveRunFragment extends Fragment {
         map.setMultiTouchControls(true);
         map.getZoomController().setVisibility(CustomZoomButtonsController.Visibility.NEVER);
         map.getController().setZoom(18.0);
-        
+
         runPath = new Polyline();
-        runPath.getOutlinePaint().setColor(Color.parseColor("#00B0FF")); // Light Blue
+        runPath.getOutlinePaint().setColor(Color.parseColor("#00B0FF"));
         runPath.getOutlinePaint().setStrokeWidth(12f);
         map.getOverlays().add(runPath);
 
@@ -146,138 +128,98 @@ public class LiveRunFragment extends Fragment {
         map.getOverlays().add(userMarker);
     }
 
-    private void checkPermissionsAndStart() {
+    private void checkPermissions() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION
             });
         } else {
-            startLocationUpdates();
+            startTrackingService();
         }
-        startTimer();
     }
 
-    private void startTimer() {
-        if (!isRunning) {
-            isRunning = true;
-            startTime = System.currentTimeMillis();
-            timerHandler.postDelayed(timerRunnable, 0);
+    private void startTrackingService() {
+        Intent intent = new Intent(requireContext(), RunTrackingService.class);
+        intent.setAction(RunTrackingService.ACTION_START_OR_RESUME_SERVICE);
+        requireContext().startService(intent);
+        requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    private void observeServiceData() {
+        RunTrackingService.pathPoints.observe(getViewLifecycleOwner(), points -> {
+            if (points != null && !points.isEmpty()) {
+                runPath.setPoints(points);
+                GeoPoint lastPoint = points.get(points.size() - 1);
+                userMarker.setPosition(lastPoint);
+                map.getController().animateTo(lastPoint);
+                map.invalidate();
+            }
+        });
+
+        RunTrackingService.distance.observe(getViewLifecycleOwner(), dist -> {
+            tvDistance.setText(String.format(Locale.getDefault(), "%.2f km", dist / 1000f));
+            updatePace();
+        });
+
+        RunTrackingService.timeInMillis.observe(getViewLifecycleOwner(), millis -> {
+            int seconds = (int) (millis / 1000) % 60;
+            int minutes = (int) (millis / (1000 * 60));
+            tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+            updatePace();
+        });
+    }
+
+    private void updatePace() {
+        Float dist = RunTrackingService.distance.getValue();
+        Long time = RunTrackingService.timeInMillis.getValue();
+        if (dist != null && time != null && dist > 0) {
+            long totalSeconds = (long) ((time / 1000f) / (dist / 1000f));
+            tvPace.setText(String.format(Locale.getDefault(), "%d:%02d", totalSeconds / 60, totalSeconds % 60));
         }
     }
 
     private void stopRunAndSave() {
-        // שחרור נעילת מסך בסיום הריצה
-        requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (runService != null) {
+            float finalDist = RunTrackingService.distance.getValue();
+            long finalTime = RunTrackingService.timeInMillis.getValue();
+            List<GeoPoint> points = RunTrackingService.pathPoints.getValue();
+            int totalSteps = RunTrackingService.stepsCount.getValue() != null ? RunTrackingService.stepsCount.getValue() : 0;
+            String spm = RunTrackingService.spmPoints.getValue().toString();
 
-        isRunning = false;
-        timerHandler.removeCallbacks(timerRunnable);
-        
-        if (fusedLocationClient != null && locationCallback != null) {
-            fusedLocationClient.removeLocationUpdates(locationCallback);
-        }
+            StringBuilder routeSb = new StringBuilder();
+            if (points != null) {
+                for (GeoPoint p : points) {
+                    routeSb.append(p.getLatitude()).append(",").append(p.getLongitude()).append(";");
+                }
+            }
 
-        long durationMillis = System.currentTimeMillis() - startTime;
-        float distanceKm = totalDistance / 1000f;
-        float avgPace = 0;
-        if (distanceKm > 0) {
-            avgPace = (durationMillis / 1000f) / distanceKm;
-        }
+            float avgPace = 0;
+            if (finalDist > 0) avgPace = (finalTime / 1000f) / (finalDist / 1000f);
 
-        StringBuilder routeSb = new StringBuilder();
-        for (GeoPoint p : runPath.getActualPoints()) {
-            routeSb.append(p.getLatitude()).append(",").append(p.getLongitude()).append(";");
-        }
+            Run runToSave = new Run(System.currentTimeMillis(), finalDist, finalTime, avgPace, routeSb.toString(), "", totalSteps, spm);
 
-        final Run runToSave = new Run(
-                System.currentTimeMillis(),
-                totalDistance,
-                durationMillis,
-                avgPace,
-                routeSb.toString(),
-                speedHistory.toString()
-        );
-
-        Executors.newSingleThreadExecutor().execute(() -> {
-            AppDatabase.getInstance(requireContext()).runDao().insert(runToSave);
-            new Handler(Looper.getMainLooper()).post(() -> {
-                if (isAdded()) {
-                    Toast.makeText(getContext(), "Run Saved Successfully!", Toast.LENGTH_SHORT).show();
+            Executors.newSingleThreadExecutor().execute(() -> {
+                AppDatabase.getInstance(requireContext()).runDao().insert(runToSave);
+                requireActivity().runOnUiThread(() -> {
+                    Intent intent = new Intent(requireContext(), RunTrackingService.class);
+                    intent.setAction(RunTrackingService.ACTION_STOP_SERVICE);
+                    requireContext().startService(intent);
                     listener.onRunFinished();
-                }
+                });
             });
-        });
-    }
-
-    private void startLocationUpdates() {
-        LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
-                .setMinUpdateIntervalMillis(1500)
-                .build();
-
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                for (Location location : locationResult.getLocations()) {
-                    updateRunStats(location);
-                }
-            }
-        };
-
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
         }
-    }
-
-    private void updateRunStats(Location location) {
-        if (!isRunning) return;
-
-        GeoPoint newPoint = new GeoPoint(location.getLatitude(), location.getLongitude());
-        map.getController().animateTo(newPoint);
-        
-        runPath.addPoint(newPoint);
-        
-        if (userMarker != null) {
-            userMarker.setPosition(newPoint);
-        }
-        
-        map.invalidate();
-
-        speedHistory.append(location.getSpeed()).append(",");
-
-        if (lastLocation != null) {
-            float distanceStep = lastLocation.distanceTo(location);
-            totalDistance += distanceStep;
-            
-            float distanceKm = totalDistance / 1000f;
-            tvDistance.setText(String.format(Locale.getDefault(), "%.2f km", distanceKm));
-            
-            float speed = location.getSpeed();
-            if (speed > 0.5) {
-                float paceSecondsPerKm = 1000f / speed;
-                int paceMin = (int) (paceSecondsPerKm / 60);
-                int paceSec = (int) (paceSecondsPerKm % 60);
-                tvPace.setText(String.format(Locale.getDefault(), "%d:%02d", paceMin, paceSec));
-            }
-        }
-        lastLocation = location;
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // שחרור נעילת מסך אם יוצאים מהפרגמנט באמצע
-        requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (isBound) {
+            requireContext().unbindService(serviceConnection);
+            isBound = false;
+        }
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        map.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        map.onPause();
-    }
+    @Override public void onResume() { super.onResume(); map.onResume(); }
+    @Override public void onPause() { super.onPause(); map.onPause(); }
 }

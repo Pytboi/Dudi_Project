@@ -32,29 +32,14 @@
         app:layout_constraintEnd_toEndOf="parent" />
 
     <LinearLayout
-        android:id="@+id/ll_social_buttons"
+        android:id="@+id/ll_buttons"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:spacing="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_login_subtitle"
         app:layout_constraintVertical_bias="0.6">
 
-        <!-- Strava Login -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_login_strava"
-            style="@style/Widget.App.Button.Pill"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="Continue with Strava"
-            android:backgroundTint="#FC4C02"
-            android:textColor="@color/white"
-            android:layout_marginBottom="16dp"
-            app:icon="@android:drawable/ic_menu_directions"
-            app:iconGravity="textStart" />
-
-        <!-- Google Login -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_login_google"
             style="@style/Widget.App.Button.Pill"
@@ -68,29 +53,30 @@
             app:iconTint="@color/black"
             app:iconGravity="textStart" />
 
-        <!-- Apple Login -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_login_apple"
+            android:id="@+id/btn_login_email_gate"
             style="@style/Widget.App.Button.Pill"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            android:text="Continue with Apple"
-            android:backgroundTint="@color/black"
+            android:text="Continue with Email"
+            android:backgroundTint="@color/primary_neon_orange"
+            android:textColor="@color/black"
+            android:layout_marginBottom="16dp"
+            app:icon="@android:drawable/ic_dialog_email"
+            app:iconTint="@color/black"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_login_strava"
+            style="@style/Widget.App.Button.Pill"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="Continue with Strava"
+            android:backgroundTint="#FC4C02"
             android:textColor="@color/white"
-            app:icon="@android:drawable/ic_lock_lock"
+            app:icon="@android:drawable/ic_menu_directions"
             app:iconGravity="textStart" />
 
     </LinearLayout>
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="BY CONTINUING, YOU AGREE TO OUR TERMS"
-        android:textColor="@color/text_disabled"
-        android:textSize="10sp"
-        android:layout_marginBottom="24dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

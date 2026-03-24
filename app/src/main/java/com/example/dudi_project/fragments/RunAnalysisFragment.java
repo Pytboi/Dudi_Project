@@ -1,5 +1,6 @@
 package com.example.dudi_project.fragments;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -31,10 +32,11 @@ import java.util.concurrent.Executors;
 public class RunAnalysisFragment extends Fragment {
 
     private MapView map;
-    private TextView tvDistance, tvTime, tvPace;
-    private LineChart speedChart;
-    private ImageButton btnBack;
+    private TextView tvDistance, tvTime, tvPace, tvAvgSpm;
+    private LineChart speedChart, spmChart;
+    private ImageButton btnBack, btnShare;
     private int runId = -1;
+    private Run currentRun;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -53,17 +55,22 @@ public class RunAnalysisFragment extends Fragment {
         tvDistance = view.findViewById(R.id.tv_analysis_distance);
         tvTime = view.findViewById(R.id.tv_analysis_time);
         tvPace = view.findViewById(R.id.tv_analysis_pace);
+        tvAvgSpm = view.findViewById(R.id.tv_avg_spm);
+        
         speedChart = view.findViewById(R.id.speed_chart);
+        spmChart = view.findViewById(R.id.spm_chart);
+        
         btnBack = view.findViewById(R.id.btn_analysis_back);
+        btnShare = view.findViewById(R.id.btn_analysis_share);
 
         initMap();
-        setupChart();
+        setupChart(speedChart, "Speed (m/s)");
+        setupChart(spmChart, "Cadence (SPM)");
 
-        btnBack.setOnClickListener(v -> requireActivity().onBackPressed());
+        btnBack.setOnClickListener(v -> requireActivity().getOnBackPressedDispatcher().onBackPressed());
+        btnShare.setOnClickListener(v -> shareRunStats());
 
-        if (runId != -1) {
-            loadRunData();
-        }
+        if (runId != -1) loadRunData();
 
         return view;
     }
@@ -74,88 +81,125 @@ public class RunAnalysisFragment extends Fragment {
         map.getZoomController().setVisibility(CustomZoomButtonsController.Visibility.NEVER);
     }
 
-    private void setupChart() {
-        speedChart.getDescription().setEnabled(false);
-        speedChart.setDrawGridBackground(false);
-        speedChart.getLegend().setEnabled(false);
-        speedChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
-        speedChart.getXAxis().setDrawGridLines(false);
-        speedChart.getXAxis().setTextColor(Color.WHITE);
-        speedChart.getAxisLeft().setTextColor(Color.WHITE);
-        speedChart.getAxisRight().setEnabled(false);
+    private void setupChart(LineChart chart, String noDataText) {
+        chart.getDescription().setEnabled(false);
+        chart.setDrawGridBackground(false);
+        chart.getLegend().setEnabled(false);
+        chart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        chart.getXAxis().setDrawGridLines(false);
+        chart.getXAxis().setTextColor(Color.WHITE);
+        chart.getAxisLeft().setTextColor(Color.WHITE);
+        chart.getAxisRight().setEnabled(false);
+        chart.setNoDataText(noDataText);
+        chart.setNoDataTextColor(Color.GRAY);
     }
 
     private void loadRunData() {
         Executors.newSingleThreadExecutor().execute(() -> {
-            Run run = AppDatabase.getInstance(requireContext()).runDao().getRunById(runId);
-            if (run != null) {
-                requireActivity().runOnUiThread(() -> displayRun(run));
+            currentRun = AppDatabase.getInstance(requireContext()).runDao().getRunById(runId);
+            if (currentRun != null && isAdded()) {
+                requireActivity().runOnUiThread(() -> displayRun(currentRun));
             }
         });
     }
 
+    private void shareRunStats() {
+        if (currentRun == null) return;
+        String shareBody = String.format(Locale.getDefault(),
+                "MISSION COMPLETE! 🏃‍♂️🔥\nDistance: %.2f km\nAvg SPM: %d\nTracked by COACHES DONT PLAY...",
+                currentRun.getDistance() / 1000f, calculateAverageSpm(currentRun.getSpmPoints()));
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, shareBody);
+        startActivity(Intent.createChooser(intent, "Share Mission"));
+    }
+
     private void displayRun(Run run) {
-        float distanceKm = run.getDistance() / 1000f;
-        tvDistance.setText(String.format(Locale.getDefault(), "%.2f km", distanceKm));
+        try {
+            float distanceKm = run.getDistance() / 1000f;
+            tvDistance.setText(String.format(Locale.getDefault(), "%.2f km", distanceKm));
 
-        long millis = run.getDurationMillis();
-        int seconds = (int) (millis / 1000) % 60;
-        int minutes = (int) (millis / (1000 * 60));
-        tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds));
+            long millis = run.getDurationMillis();
+            tvTime.setText(String.format(Locale.getDefault(), "%02d:%02d", (millis / 60000), (millis / 1000) % 60));
 
-        int paceMin = (int) (run.getAveragePace() / 60);
-        int paceSec = (int) (run.getAveragePace() % 60);
-        tvPace.setText(String.format(Locale.getDefault(), "%d:%02d", paceMin, paceSec));
+            int pMin = (int) (run.getAveragePace() / 60);
+            int pSec = (int) (run.getAveragePace() % 60);
+            tvPace.setText(String.format(Locale.getDefault(), "%d:%02d", pMin, pSec));
 
-        // Draw Map Polyline
-        String routeStr = run.getRoutePoints();
-        if (routeStr != null && !routeStr.isEmpty()) {
-            Polyline polyline = new Polyline();
-            polyline.getOutlinePaint().setColor(Color.parseColor("#FF6D00"));
-            polyline.getOutlinePaint().setStrokeWidth(12f);
+            drawMap(run.getRoutePoints());
+            drawChart(speedChart, run.getSpeedPoints(), "#FF6D00", "Speed");
+            drawChart(spmChart, run.getSpmPoints(), "#00B0FF", "Cadence");
+            
+            int avgSpm = calculateAverageSpm(run.getSpmPoints());
+            tvAvgSpm.setText("Avg: " + (avgSpm > 0 ? avgSpm : "--"));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-            List<GeoPoint> points = new ArrayList<>();
-            String[] coordPairs = routeStr.split(";");
-            for (String pair : coordPairs) {
-                if (pair.contains(",")) {
-                    String[] latLng = pair.split(",");
-                    points.add(new GeoPoint(Double.parseDouble(latLng[0]), Double.parseDouble(latLng[1])));
-                }
+    private void drawMap(String routeStr) {
+        if (routeStr == null || routeStr.isEmpty()) return;
+        Polyline polyline = new Polyline();
+        polyline.getOutlinePaint().setColor(Color.parseColor("#00B0FF"));
+        polyline.getOutlinePaint().setStrokeWidth(12f);
+        List<GeoPoint> points = new ArrayList<>();
+        for (String pair : routeStr.split(";")) {
+            if (pair.contains(",")) {
+                String[] latLng = pair.split(",");
+                points.add(new GeoPoint(Double.parseDouble(latLng[0]), Double.parseDouble(latLng[1])));
             }
-            polyline.setPoints(points);
-            map.getOverlays().add(polyline);
-
-            if (!points.isEmpty()) {
-                map.getController().setZoom(17.0);
-                map.getController().setCenter(points.get(points.size()/2));
-            }
+        }
+        polyline.setPoints(points);
+        map.getOverlays().add(polyline);
+        if (!points.isEmpty()) {
+            map.getController().setZoom(17.0);
+            map.getController().setCenter(points.get(points.size() / 2));
         }
         map.invalidate();
+    }
 
-        // Draw Speed Chart
-        String speedStr = run.getSpeedPoints();
-        if (speedStr != null && !speedStr.isEmpty()) {
-            List<Entry> entries = new ArrayList<>();
-            String[] speeds = speedStr.split(",");
-            for (int i = 0; i < speeds.length; i++) {
-                if (!speeds[i].isEmpty()) {
-                    entries.add(new Entry(i, Float.parseFloat(speeds[i])));
+    private void drawChart(LineChart chart, String dataStr, String colorHex, String label) {
+        if (dataStr == null || dataStr.isEmpty()) return;
+        List<Entry> entries = new ArrayList<>();
+        String[] values = dataStr.split(",");
+        for (int i = 0; i < values.length; i++) {
+            try {
+                if (!values[i].trim().isEmpty()) {
+                    entries.add(new Entry(i, Float.parseFloat(values[i])));
                 }
-            }
-
-            LineDataSet dataSet = new LineDataSet(entries, "Speed");
-            dataSet.setColor(Color.parseColor("#FF6D00"));
-            dataSet.setLineWidth(3f);
-            dataSet.setDrawCircles(false);
-            dataSet.setDrawValues(false);
-            dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
-            dataSet.setDrawFilled(true);
-            dataSet.setFillColor(Color.parseColor("#FF6D00"));
-            dataSet.setFillAlpha(50);
-
-            speedChart.setData(new LineData(dataSet));
-            speedChart.invalidate();
+            } catch (Exception ignored) {}
         }
+        if (entries.isEmpty()) return;
+        
+        LineDataSet dataSet = new LineDataSet(entries, label);
+        dataSet.setColor(Color.parseColor(colorHex));
+        dataSet.setLineWidth(3f);
+        dataSet.setDrawCircles(false);
+        dataSet.setDrawValues(false);
+        dataSet.setMode(LineDataSet.Mode.CUBIC_BEZIER);
+        dataSet.setDrawFilled(true);
+        dataSet.setFillColor(Color.parseColor(colorHex));
+        dataSet.setFillAlpha(50);
+        
+        chart.setData(new LineData(dataSet));
+        chart.invalidate();
+    }
+
+    private int calculateAverageSpm(String spmStr) {
+        if (spmStr == null || spmStr.isEmpty()) return 0;
+        String[] values = spmStr.split(",");
+        float sum = 0;
+        int count = 0;
+        for (String val : values) {
+            try {
+                if (!val.trim().isEmpty()) {
+                    sum += Float.parseFloat(val);
+                    count++;
+                }
+            } catch (Exception ignored) {}
+        }
+        return count > 0 ? (int) (sum / count) : 0;
     }
 
     @Override public void onResume() { super.onResume(); map.onResume(); }
